@@ -10,6 +10,7 @@ import { Entypo } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import notF from '../../assets/notF.png';
 import dataList from '../../db';
+import { Rating } from 'react-native-elements';
 
 export default function Detail({ navigation }) {
     const [data, setData] = useState({});
@@ -94,6 +95,7 @@ export default function Detail({ navigation }) {
                             <Text style={styles.title} numberOfLines={2} ellipsizeMode="tail">{data.name}</Text>
                             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                                 <View >
+                                <Rating showRating fractions={1} startingValue={1.3} />
                                     <Text style={{ fontSize: 20, fontWeight: 'bold', }}>{`Xuất xứ : ${data.origin}`}</Text>
                                     <Text style={{ fontSize: 20, fontWeight: 'bold', }}>{`Thể loại: ${data.category}`}</Text>
                                 </View>

@@ -1,39 +1,68 @@
-import { StyleSheet, View, Text, ScrollView, Image, Keyboard } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, Image } from 'react-native';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { getData } from '../api/api';
 import { useFocusEffect } from '@react-navigation/native';
 import { Entypo } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { TouchableOpacity } from 'react-native-gesture-handler';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import gioHang from '../../assets/gioHang.png';
 import dataList from '../../db';
-import Picker from 'react-native-picker-select';
-
-const FilterComponent = ({ categories, onFilterChange }) => {
-    const [selectedCategory, setSelectedCategory] = useState('');
-
-    const handleFilterChange = (category) => {
-        setSelectedCategory(category);
-        onFilterChange(category); // Gọi hàm callback khi có sự thay đổi trong filter
-    };
-
-    return (
-        <View style={styles.container}>
-
-        </View>
-    );
-};
-
-
+import { FAB, Portal, PaperProvider, Button, RadioButton } from 'react-native-paper';
+import { Dialog } from 'react-native-elements';
+import { CheckBox } from '@rneui/themed';
 export default function HomeScreen2({ navigation }) {
     const [data, setData] = useState([]);
     const [likedProducts, setLikedProducts] = useState([]);
     const [currentPage, setCurrentPage] = useState("A");
     const [storedData, setStoredData] = useState([]);
-    // const [dataList, setStoredData] = useState([]);
     const scrollViewRef = useRef();
-    const [selectedCategory, setSelectedCategory] = useState('');
+    const [state, setState] = useState({ open: false });
+    const [visible1, setVisible1] = useState(false);
+    const [categories, setCategories] = useState([
+        { id: 1, name: 'Phong lan', checked: false },
+        { id: 2, name: 'Địa lan', checked: false },
+        { id: 3, name: 'Bán địa lan', checked: false },
+        // Thêm các thể loại khác nếu cần
+    ]);
+    const [selectedIndex, setSelectedIndex] = useState(0);
+    const toggleDialog = () => setVisible1(!visible1);
+
+
+    const handleCheckboxToggle = (categoryId) => {
+        const updatedCategories = categories.map(category => {
+            if (category.id === categoryId) {
+                return { ...category, checked: !category.checked };
+            }
+            return category;
+        });
+        setCategories(updatedCategories);
+    };
+
+    // lọc
+    const handleApplyFilter = () => {
+        // Thực hiện các xử lý liên quan đến việc áp dụng bộ lọc ở đây
+        const selectedCategories = categories.filter(category => category.checked);
+        const filteredList = dataList.filter(item => {
+            // Kiểm tra xem danh mục của mỗi sản phẩm có tồn tại trong danh sách các danh mục đã chọn hay không
+            return selectedCategories.some(selectedCategory => item.category === selectedCategory.name);
+        });
+        // Cập nhật dữ liệu hiển thị
+        if (selectedIndex == 0) {
+            const sortedData = sortByPriceAscending(filteredList);
+            setData(sortedData);
+            loadStoredData(sortedData);
+        } else {
+            const sortedData = sortByPriceDescending(filteredList);
+            setData(sortedData);
+            loadStoredData(sortedData);
+        }
+        toggleDialog();
+    };
+
+    const toggleDialog1 = () => {
+        setVisible1(!visible1);
+    };
+
+    const { open } = state;
 
     const scrollToTop = () => {
         scrollViewRef.current.scrollTo({ y: 0, animated: true });
@@ -68,23 +97,33 @@ export default function HomeScreen2({ navigation }) {
         return sortedData.sort((a, b) => b.price - a.price); // Thay đổi hàm so sánh để sắp xếp giảm dần
     };
 
-    const selectedCategories = ["Địa lan", "Phong lan"];
-    useFocusEffect(
-        useCallback(() => {
-            // scrollToTop2()
-            console.log(dataList);
+    // useFocusEffect(
+    //     useCallback(() => {
+    //         // scrollToTop2()
+    //         console.log(dataList);
 
-            scrollToTop()
-            setCurrentPage("A")
-            const sortedData = sortByPriceAscending(dataList);
-            setData(sortedData);
-            loadStoredData(sortedData);
-            return () => {
-            };
-        }, []),
+    //         scrollToTop()
+    //         setCurrentPage("A")
+    //         const sortedData = sortByPriceAscending(dataList);
+    //         setData(sortedData);
+    //         loadStoredData(sortedData);
+    //         return () => {
+    //         };
+    //     }, []),
 
-    );
+    // );
 
+    useEffect(() => {
+        console.log(dataList);
+
+        scrollToTop()
+        setCurrentPage("A")
+        const sortedData = sortByPriceAscending(dataList);
+        setData(sortedData);
+        loadStoredData(sortedData);
+        return () => {
+        };
+    }, []);
     const handleLike = (index, product) => {
         const updatedLikedProducts = [...likedProducts];
         updatedLikedProducts[index] = !updatedLikedProducts[index];
@@ -115,76 +154,106 @@ export default function HomeScreen2({ navigation }) {
         return
 
     };
-    const handleFilterChange = (category) => {
-        setSelectedCategory(category);
-        onFilterChange(category); // Gọi hàm callback khi có sự thay đổi trong filter
-    };
-    const onFilterChange = (e) => {
-        console.log('====================================');
-        console.log(e);
-        console.log('====================================');
-    }
+
     return (
-        <View style={styles.container} >
+        <PaperProvider >
+            <View style={styles.container} >
+
+                <ScrollView ref={scrollViewRef}>
+                    <View style={{ flexDirection: 'column-reverse', rowGap: 10, padding: 14 }}>
 
 
-            {/* <FilterComponent categories={selectedCategories} onFilterChange={(e) => { onFilterChange(e) }} /> */}
+                        {data.length == 0 ? <View>
 
-            <Text style={styles.label}>Select category:</Text>
-            <Picker
-                selectedValue={selectedCategory}
-                onValueChange={(itemValue, itemIndex) => handleFilterChange(itemValue)}
-            >
-                <Picker.Item label="Select category" value="" />
-                {selectedCategories.map((category, index) => (
-                    <Picker.Item  label={category} value={category} />
-                ))}
-            </Picker>
+                            <View>
+                                <Image
+                                    style={{ width: "100%", height: 400 }}
+                                    source={gioHang}
+                                />
+                                <Text style={{ color: '#fff', fontSize: 20, padding: 30, textAlign: 'center' }}>
 
-            <ScrollView ref={scrollViewRef}>
-                <View style={{ flexDirection: 'column-reverse', rowGap: 10, padding: 14 }}>
-                    {data.length == 0 ? <View>
+                                </Text>
+                            </View>
 
-                        <View>
-                            <Image
-                                style={{ width: "100%", height: 400 }}
-                                source={gioHang}
-                            />
-                            <Text style={{ color: '#fff', fontSize: 20, padding: 30, textAlign: 'center' }}>
+                        </View> : <></>}
+                        {data.map((data, index) => (
+                            <View style={{ padding: 10 }} key={index}>
+                                <TouchableOpacity
+                                    style={styles.origin}
 
-                            </Text>
-                        </View>
-
-                    </View> : <></>}
-                    {data.map((data, index) => (
-                        <View style={{ padding: 10 }} key={index}>
-                            <TouchableOpacity
-                                style={styles.origin}
-
-                                onPress={() => {
-                                    navigation.navigate("Detail", { itemData: data.id });
-                                }}
-                            >
-                                <Image source={{ uri: data.image }} style={styles.image} />
-                                <View style={{ padding: 10 }} >
-                                    <Text style={styles.title} numberOfLines={2} ellipsizeMode="tail">{data.name}</Text>
-                                    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                                        <View>
-                                            <Text>{`Xuất xứ : ${data.origin}`}</Text>
-                                            <Text>{`Thể loại: ${data.category}`}</Text>
+                                    onPress={() => {
+                                        navigation.navigate("Detail", { itemData: data.id });
+                                    }}
+                                >
+                                    <Image source={{ uri: data.image }} style={styles.image} />
+                                    <View style={{ padding: 10 }} >
+                                        <Text style={styles.title} numberOfLines={2} ellipsizeMode="tail">{data.name}</Text>
+                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                                            <View>
+                                                <Text>{`Xuất xứ : ${data.origin}`}</Text>
+                                                <Text>{`Thể loại: ${data.category}`}</Text>
+                                            </View>
                                         </View>
                                     </View>
+                                </TouchableOpacity>
+                                <View style={{ marginTop: -50, marginRight: 10, flexDirection: 'row', justifyContent: 'flex-end', }}>
+                                    {likedProducts[index] ? <Entypo style={{ padding: 5 }} pointerEvents="none" onPress={() => handleUnlike(index, data)} name="heart" size={40} color="red" /> : <Entypo style={{ padding: 5 }} pointerEvents="none" onPress={() => handleLike(index, data)} name="heart-outlined" size={40} color="#555555" />}
                                 </View>
-                            </TouchableOpacity>
-                            <View style={{ marginTop: -50, marginRight: 10, flexDirection: 'row', justifyContent: 'flex-end', }}>
-                                {likedProducts[index] ? <Entypo style={{ padding: 5 }} pointerEvents="none" onPress={() => handleUnlike(index, data)} name="heart" size={40} color="red" /> : <Entypo style={{ padding: 5 }} pointerEvents="none" onPress={() => handleLike(index, data)} name="heart-outlined" size={40} color="#555555" />}
                             </View>
-                        </View>
+                        ))}
+                    </View>
+
+                    <View style={{ height:220 }}></View>
+                </ScrollView>
+                <Portal >
+                    <FAB.Group
+                        fabStyle={{ marginBottom: 130, marginRight: 15 }}
+                        open={open}
+                        visible
+                        icon={open ? 'plus' : 'menu'}
+                        actions={[
+
+                        ]}
+                        onStateChange={() => { }}
+                        onPress={() => {
+                            toggleDialog1()
+                        }}
+                    />
+                </Portal>
+                <Dialog
+                    isVisible={visible1}
+                    onBackdropPress={toggleDialog1}
+                >
+                    <Dialog.Title title="Lọc" />
+                    <View>
+                        <RadioButton.Group
+                            onValueChange={index => setSelectedIndex(index)}
+                            value={selectedIndex}
+                        >
+                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+
+                                <RadioButton.Item label="Giá tăng dần" value={0} />
+                            </View>
+                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+
+                                <RadioButton.Item label="Giá giảm dần" value={1} />
+                            </View>
+                        </RadioButton.Group>
+                    </View>
+                    {categories.map(category => (
+                        <CheckBox
+                            key={category.id}
+                            title={category.name}
+                            checked={category.checked}
+                            onPress={() => handleCheckboxToggle(category.id)}
+                        />
                     ))}
-                </View>
-                <View style={{ height: 120 }}></View>
-            </ScrollView>
-        </View>
+                    <Dialog.Actions>
+                        <Button onPress={handleApplyFilter}>Áp dụng</Button>
+                    </Dialog.Actions>
+                </Dialog>
+            </View>
+        </PaperProvider>
     );
 }
 
